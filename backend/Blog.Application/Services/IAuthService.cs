@@ -1,0 +1,10 @@
+using Blog.Application.Auth;
+
+namespace Blog.Application.Services
+{
+    public interface IAuthService
+    {
+        Task<AuthResponse> RegisterAsync(RegisterRequest request);
+        Task<AuthResponse> LoginAsync(LoginRequest request);
+    }
+}
