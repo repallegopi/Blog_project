@@ -18,15 +18,12 @@ namespace Blog.Api.Controllers
             _context = context;
         }
 
-        // =============================
-        // PUBLIC - Get comments for a post
-        // =============================
-
+        // PUBLIC
         [HttpGet("post/{postId}")]
         public async Task<IActionResult> GetCommentsByPost(int postId)
         {
             var comments = await _context.Comments
-                .Where(c => c.PostId == postId)
+                .Where(c => c.PostId == postId && !c.IsDeleted)
                 .Include(c => c.User)
                 .Select(c => new
                 {
@@ -40,10 +37,7 @@ namespace Blog.Api.Controllers
             return Ok(comments);
         }
 
-        // =============================
-        // AUTHORIZED - Add comment
-        // =============================
-
+        // CREATE
         [Authorize]
         [HttpPost]
         public async Task<IActionResult> Create(Comment comment)
@@ -52,6 +46,7 @@ namespace Blog.Api.Controllers
 
             comment.UserId = userId;
             comment.CreatedAt = DateTime.UtcNow;
+            comment.IsDeleted = false;
 
             _context.Comments.Add(comment);
             await _context.SaveChangesAsync();
@@ -59,10 +54,7 @@ namespace Blog.Api.Controllers
             return Ok(comment);
         }
 
-        // =============================
-        // UPDATE - Owner or Admin
-        // =============================
-
+        // UPDATE
         [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, Comment updatedComment)
@@ -84,10 +76,7 @@ namespace Blog.Api.Controllers
             return Ok(comment);
         }
 
-        // =============================
-        // DELETE - Owner or Admin (Soft Delete)
-        // =============================
-
+        // DELETE
         [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)

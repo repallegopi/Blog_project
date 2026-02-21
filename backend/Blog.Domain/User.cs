@@ -1,31 +1,28 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace Blog.Domain
 {
     public class User
     {
         public int Id { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        public string Username { get; set; } = string.Empty;
+        public string Username { get; set; } = null!;
+        public string Email { get; set; } = null!;
+        public string PasswordHash { get; set; } = null!;
 
-        [Required]
-        [EmailAddress]
-        [MaxLength(150)]
-        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = "User";
 
-        [Required]
-        public string PasswordHash { get; set; } = string.Empty;
+        // Approval System
+        public bool IsApproved { get; set; } = true;
 
-        [Required]
-        public string Role { get; set; } = "User"; // Admin or User
+        // Writer Request System
+        public bool IsWriterRequestPending { get; set; } = false;
+        public DateTime? WriterRequestedAt { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
+        // Soft Delete
         public bool IsDeleted { get; set; } = false;
 
-        // Navigation Properties
+        public DateTime CreatedAt { get; set; }
+
+        // Navigation
         public ICollection<Post> Posts { get; set; } = new List<Post>();
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     }

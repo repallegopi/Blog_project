@@ -71,6 +71,8 @@ namespace Blog.Api.Controllers
                     u.Username,
                     u.Email,
                     u.Role,
+                    u.IsApproved,
+                    u.IsWriterRequestPending,
                     u.CreatedAt
                 })
                 .FirstOrDefaultAsync();
@@ -117,6 +119,8 @@ namespace Blog.Api.Controllers
                     u.Username,
                     u.Email,
                     u.Role,
+                    u.IsApproved,
+                    u.IsWriterRequestPending,
                     u.CreatedAt
                 })
                 .ToListAsync();
@@ -130,38 +134,6 @@ namespace Blog.Api.Controllers
         {
             var count = await _context.Users.CountAsync();
             return Ok(new { totalUsers = count });
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpPut("users/{id}/role")]
-        public async Task<IActionResult> UpdateUserRole(int id, UpdateUserRoleRequest request)
-        {
-            var user = await _context.Users.FindAsync(id);
-
-            if (user == null)
-                return NotFound();
-
-            user.Role = request.Role;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "User role updated successfully." });
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("users/{id}")]
-        public async Task<IActionResult> SoftDeleteUser(int id)
-        {
-            var user = await _context.Users.FindAsync(id);
-
-            if (user == null)
-                return NotFound();
-
-            user.IsDeleted = true;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "User deleted successfully." });
         }
     }
 }

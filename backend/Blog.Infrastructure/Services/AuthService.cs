@@ -21,9 +21,10 @@ namespace Blog.Infrastructure.Services
             _configuration = configuration;
         }
 
+        // ================= REGISTER =================
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+            if (await _context.Users.AnyAsync(x => x.Email == request.Email))
                 throw new Exception("Email already exists.");
 
             var user = new User
@@ -31,12 +32,35 @@ namespace Blog.Infrastructure.Services
                 Username = request.Username,
                 Email = request.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Role = "User"
+                CreatedAt = DateTime.UtcNow
             };
+
+            if (request.Role == "BlogWriter")
+            {
+                user.Role = "BlogWriter";
+                user.IsApproved = false;
+            }
+            else
+            {
+                user.Role = "User";
+                user.IsApproved = true;
+            }
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
+            if (user.Role == "BlogWriter" && !user.IsApproved)
+            {
+                return new AuthResponse
+                {
+                    UserId = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    Role = user.Role,
+                    Token = null
+                };
+            }
+
             var token = GenerateJwtToken(user);
 
             return new AuthResponse
@@ -49,14 +73,20 @@ namespace Blog.Infrastructure.Services
             };
         }
 
+        // ================= LOGIN =================
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == request.Email);
+                .FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted);
 
-            if (user == null ||
-                !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (user == null)
                 throw new Exception("Invalid credentials.");
+
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+                throw new Exception("Invalid credentials.");
+
+            if (user.Role == "BlogWriter" && !user.IsApproved)
+                throw new Exception("Writer account not approved yet.");
 
             var token = GenerateJwtToken(user);
 
@@ -70,6 +100,7 @@ namespace Blog.Infrastructure.Services
             };
         }
 
+        // ================= JWT =================
         private string GenerateJwtToken(User user)
         {
             var jwtSettings = _configuration.GetSection("JwtSettings");

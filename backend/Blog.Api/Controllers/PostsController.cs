@@ -1,4 +1,3 @@
-using Blog.Application.Services;
 using Blog.Domain;
 using Blog.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -19,14 +18,12 @@ namespace Blog.Api.Controllers
             _context = context;
         }
 
-        // =============================
-        // PUBLIC - Guest can view posts
-        // =============================
-
+        // PUBLIC
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var posts = await _context.Posts
+                .Where(p => !p.IsDeleted)
                 .Include(p => p.Author)
                 .Include(p => p.Category)
                 .Select(p => new
@@ -34,6 +31,7 @@ namespace Blog.Api.Controllers
                     p.Id,
                     p.Title,
                     p.Content,
+                    p.ImageUrl,
                     p.CreatedAt,
                     Author = p.Author.Username,
                     Category = p.Category.Name
@@ -47,14 +45,15 @@ namespace Blog.Api.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             var post = await _context.Posts
+                .Where(p => p.Id == id && !p.IsDeleted)
                 .Include(p => p.Author)
                 .Include(p => p.Category)
-                .Where(p => p.Id == id)
                 .Select(p => new
                 {
                     p.Id,
                     p.Title,
                     p.Content,
+                    p.ImageUrl,
                     p.CreatedAt,
                     Author = p.Author.Username,
                     Category = p.Category.Name
@@ -67,11 +66,8 @@ namespace Blog.Api.Controllers
             return Ok(post);
         }
 
-        // =============================
-        // AUTHORIZED USERS - Create
-        // =============================
-
-        [Authorize]
+        // CREATE
+        [Authorize(Roles = "BlogWriter,Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(Post post)
         {
@@ -79,6 +75,7 @@ namespace Blog.Api.Controllers
 
             post.AuthorId = userId;
             post.CreatedAt = DateTime.UtcNow;
+            post.IsDeleted = false;
 
             _context.Posts.Add(post);
             await _context.SaveChangesAsync();
@@ -86,11 +83,8 @@ namespace Blog.Api.Controllers
             return Ok(post);
         }
 
-        // =============================
-        // UPDATE - Owner or Admin
-        // =============================
-
-        [Authorize]
+        // UPDATE
+        [Authorize(Roles = "BlogWriter,Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, Post updatedPost)
         {
@@ -107,18 +101,14 @@ namespace Blog.Api.Controllers
             post.Title = updatedPost.Title;
             post.Content = updatedPost.Content;
             post.CategoryId = updatedPost.CategoryId;
-            post.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
             return Ok(post);
         }
 
-        // =============================
-        // DELETE - Owner or Admin (Soft Delete)
-        // =============================
-
-        [Authorize]
+        // DELETE
+        [Authorize(Roles = "BlogWriter,Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -133,6 +123,7 @@ namespace Blog.Api.Controllers
                 return Forbid();
 
             post.IsDeleted = true;
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Post deleted successfully." });

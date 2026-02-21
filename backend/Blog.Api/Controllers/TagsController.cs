@@ -17,10 +17,7 @@ namespace Blog.Api.Controllers
             _context = context;
         }
 
-        // =============================
-        // PUBLIC - Get all tags
-        // =============================
-
+        // PUBLIC
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -35,26 +32,16 @@ namespace Blog.Api.Controllers
             return Ok(tags);
         }
 
-        // =============================
-        // ADMIN ONLY - Create
-        // =============================
-
+        // ADMIN
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(Tag tag)
         {
-            if (await _context.Tags.AnyAsync(t => t.Name == tag.Name))
-                return BadRequest(new { message = "Tag already exists." });
-
             _context.Tags.Add(tag);
             await _context.SaveChangesAsync();
 
             return Ok(tag);
         }
-
-        // =============================
-        // ADMIN ONLY - Update
-        // =============================
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
@@ -70,10 +57,6 @@ namespace Blog.Api.Controllers
 
             return Ok(tag);
         }
-
-        // =============================
-        // ADMIN ONLY - Delete
-        // =============================
 
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]

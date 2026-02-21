@@ -18,9 +18,8 @@ namespace Blog.Api.Controllers
         }
 
         // =============================
-        // PUBLIC - Get all categories
+        // PUBLIC - GET ALL
         // =============================
-
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -35,35 +34,13 @@ namespace Blog.Api.Controllers
             return Ok(categories);
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var category = await _context.Categories
-                .Where(c => c.Id == id)
-                .Select(c => new
-                {
-                    c.Id,
-                    c.Name
-                })
-                .FirstOrDefaultAsync();
-
-            if (category == null)
-                return NotFound();
-
-            return Ok(category);
-        }
-
         // =============================
-        // ADMIN ONLY - Create
+        // ADMIN - CREATE
         // =============================
-
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Create(Category category)
         {
-            if (await _context.Categories.AnyAsync(c => c.Name == category.Name))
-                return BadRequest(new { message = "Category already exists." });
-
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
 
@@ -71,9 +48,8 @@ namespace Blog.Api.Controllers
         }
 
         // =============================
-        // ADMIN ONLY - Update
+        // ADMIN - UPDATE
         // =============================
-
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, Category updatedCategory)
@@ -90,9 +66,8 @@ namespace Blog.Api.Controllers
         }
 
         // =============================
-        // ADMIN ONLY - Delete
+        // ADMIN - DELETE
         // =============================
-
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)

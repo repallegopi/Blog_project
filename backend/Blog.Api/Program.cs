@@ -15,9 +15,9 @@ using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =============================
-// Database Configuration
-// =============================
+// ======================================================
+// DATABASE CONFIGURATION
+// ======================================================
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
@@ -25,17 +25,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
     ));
 
-// =============================
-// Dependency Injection
-// =============================
+// ======================================================
+// DEPENDENCY INJECTION
+// ======================================================
 
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// =============================
-// JWT Authentication
-// =============================
+// ======================================================
+// JWT AUTHENTICATION CONFIGURATION
+// ======================================================
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
@@ -49,30 +49,36 @@ builder.Services.AddAuthentication(options =>
 {
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        RoleClaimType = ClaimTypes.Role,
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(key)
+
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+
+        // 🔥 IMPORTANT FIX FOR ROLE BASED AUTHORIZATION
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = ClaimTypes.Name
     };
 });
 
 builder.Services.AddAuthorization();
 
-// =============================
-// Controllers
-// =============================
+// ======================================================
+// CONTROLLERS
+// ======================================================
 
 builder.Services.AddControllers();
 
-// =============================
-// Swagger with JWT Support
-// =============================
+// ======================================================
+// SWAGGER WITH JWT SUPPORT
+// ======================================================
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -85,7 +91,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter 'Bearer' followed by space and JWT token.\nExample: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        Description = "Enter JWT Token only. Example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -106,13 +112,15 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// =============================
-// Auto Admin Seeding (Optional)
-// =============================
+// ======================================================
+// AUTO ADMIN SEEDING (SAFE)
+// ======================================================
 
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    context.Database.EnsureCreated();
 
     if (!context.Users.Any(u => u.Role == "Admin"))
     {
@@ -122,6 +130,9 @@ using (var scope = app.Services.CreateScope())
             Email = "admin@blog.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
             Role = "Admin",
+            IsApproved = true,
+            IsWriterRequestPending = false,
+            IsDeleted = false,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -129,9 +140,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// =============================
-// Middleware
-// =============================
+// ======================================================
+// MIDDLEWARE PIPELINE
+// ======================================================
 
 if (app.Environment.IsDevelopment())
 {
@@ -139,9 +150,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseStaticFiles();       // For image uploads
 app.UseHttpsRedirection();
 
-app.UseAuthentication();   // MUST come before Authorization
+app.UseAuthentication();    // MUST be before Authorization
 app.UseAuthorization();
 
 app.MapControllers();
